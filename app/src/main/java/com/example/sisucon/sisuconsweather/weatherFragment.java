@@ -1,8 +1,8 @@
 package com.example.sisucon.sisuconsweather;
 
 import android.Manifest;
-import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
@@ -34,10 +34,13 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.sisucon.sisuconsweather.gson.Forecast;
 import com.example.sisucon.sisuconsweather.gson.Weather;
+import com.example.sisucon.sisuconsweather.service.AutoUpdateService;
 import com.example.sisucon.sisuconsweather.util.Utility;
 import com.example.sisucon.sisuconsweather.util.Utils;
+import com.example.sisucon.sisuconsweather.weatherDB.CheckBoxIsT;
 import com.example.sisucon.sisuconsweather.weatherDB.City;
 import com.example.sisucon.sisuconsweather.weatherDB.Country;
+import com.example.sisucon.sisuconsweather.weatherDB.Province;
 import com.example.sisucon.sisuconsweather.weatherDB.StarCountry;
 
 import org.litepal.crud.DataSupport;
@@ -45,6 +48,7 @@ import org.litepal.crud.DataSupport;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -72,10 +76,10 @@ public class weatherFragment extends Fragment {
     private Button navButton;
     private Location location;
     private boolean star;
-    private Button starButton;
+    private Button starButton,userButton;
     private Country nowCountry;
-
-
+    private List<Address> result  = null ;
+    public Boolean isCheckServer = true;
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -83,6 +87,7 @@ public class weatherFragment extends Fragment {
             View rootView = inflater.inflate(R.layout.activity_weather,container,false);
             bingPicImg = rootView.findViewById(R.id.bing_pic_img);
             drawerLayout = (DrawerLayout)rootView.findViewById(R.id.drawer_layout);
+            userButton = rootView.findViewById(R.id.userButton);
             swipeRefresh = (SwipeRefreshLayout)rootView.findViewById(R.id.swipe_refresh);
             navButton = (Button)rootView.findViewById(R.id.homeButton);
             weatherImg = (ImageView)rootView.findViewById(R.id.weatherImg);
@@ -115,6 +120,12 @@ public class weatherFragment extends Fragment {
                 }
             });
 
+            if (DataSupport.findAll(CheckBoxIsT.class).size()<=0)
+            {
+                CheckBoxIsT checkBoxIsT = new CheckBoxIsT(true);
+                checkBoxIsT.save();
+            }
+                getAutoServer();
                 loadBingPic();
                 getLocation();
                 List<String> countyList = new ArrayList<>();
@@ -134,11 +145,23 @@ public class weatherFragment extends Fragment {
                     }
                     else
                     {
-                        Toast.makeText(getActivity(), "您没有您现在所在位置的信息,请手动选择一次", Toast.LENGTH_SHORT).show();
-                        drawerLayout.openDrawer(GravityCompat.START);
+                        initSQL();
+                        Country country = DataSupport.where("countryName = ?",cityName).find(Country.class).get(0);
+                        nowCountry = country;
+                        String weatherid = country.getWeatherID();
+                        star = country.isStar();
+                        requestWeather(weatherid);
                     }
                 }
             changeStar();
+
+                userButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(getActivity(),UserActivity.class);
+                        startActivity(intent);
+                    }
+                });
 
 
             starButton.setOnClickListener(new View.OnClickListener() {
@@ -164,6 +187,73 @@ public class weatherFragment extends Fragment {
         }
         return null;
     }
+
+public void initSQL()
+{
+    String address = "http://guolin.tech/api/china";
+    queryFromServer(address,"province",0);
+    String provicnName = result.get(0).getAdminArea().split("省")[0];
+        Province province = DataSupport.where("name = ?",provicnName).find(Province.class).get(0);
+        String Cityaddress = "http://guolin.tech/api/china/" + province.getProvinceCode();
+      queryFromServer(Cityaddress,"city",province.getId());
+
+    for (int i = 0; i < DataSupport.findAll(City.class).size(); i++) {
+        City city = DataSupport.findAll(City.class).get(i);
+        String Countryaddress = "http://guolin.tech/api/china/" +city.getProvinceCode()+"/"+city.getCityCode();
+       queryFromServer(Countryaddress,"county",city.getId());
+    }
+}
+
+    public void queryFromServer(String address, final String type, final int id) {
+        Utils.seedMessage(address, new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String responseText = response.body().string();
+                boolean result = false;
+                if ("province".equals(type)) {
+                    Utility.handleProvinceResponse(responseText);
+                } else if ("city".equals(type)) {
+                     Utility.handleCityResponse(responseText,id);
+                } else if ("county".equals(type)) {
+                     Utility.handleCountyResponse(responseText, id);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 通过runOnUiThread()方法回到主线程处理逻辑
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
+
+    public void getAutoServer()
+    {
+        try {
+            Properties properties = new Properties();
+            properties.load(getActivity().getAssets().open("properties"));
+            String isCheck = properties.getProperty("isAutoUpdate");
+            if (isCheck.equals("1"))
+            {
+                System.out.println("ischeck=true");
+            }
+            else
+            {
+                System.out.println(isCheck);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
 
 public void changeStar()
 {
@@ -255,7 +345,7 @@ changeStar();
         {
             if (location!=null)
             {
-                List<Address> result = null;
+                 result = null;
                 System.out.println(geocoder);
                 result  = geocoder.getFromLocation(location.getLatitude(),location.getLongitude(),1);
                 System.out.println(result.get(0).getLocality());
@@ -275,6 +365,14 @@ changeStar();
 
     public void requestWeather(final String weatherId) {
         String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=" + MY_KEY;
+        if (DataSupport.findAll(CheckBoxIsT.class)!=null)
+        {
+            if (DataSupport.findAll(CheckBoxIsT.class).get(0).isCheck())
+            {
+                Intent intent = new Intent(getActivity(),AutoUpdateService.class);
+                getActivity().startService(intent);
+            }
+        }
         Utils.seedMessage(weatherUrl, new Callback() {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
@@ -320,8 +418,6 @@ changeStar();
 
 
     private void showWeatherInfo(Weather weather) {
-
-
         String cityName = weather.basic.cityName;
         String updateTime = weather.basic.update.updateTime.split(" ")[1];
         String degree = weather.now.temperature + "℃";

@@ -3,6 +3,7 @@ package com.example.sisucon.sisuconsweather;
 import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
@@ -34,8 +35,10 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.sisucon.sisuconsweather.gson.Forecast;
 import com.example.sisucon.sisuconsweather.gson.Weather;
+import com.example.sisucon.sisuconsweather.service.AutoUpdateService;
 import com.example.sisucon.sisuconsweather.util.Utility;
 import com.example.sisucon.sisuconsweather.util.Utils;
+import com.example.sisucon.sisuconsweather.weatherDB.CheckBoxIsT;
 import com.example.sisucon.sisuconsweather.weatherDB.City;
 import com.example.sisucon.sisuconsweather.weatherDB.Country;
 import com.example.sisucon.sisuconsweather.weatherDB.StarCountry;
@@ -69,7 +72,7 @@ public class weatherFragmentStar extends Fragment {
     private String mWeatherId;
     public DrawerLayout drawerLayout;
     private boolean star =true;
-    private Button starButton;
+    private Button starButton,userButton;
     private Country nowCountry;
 
 
@@ -102,7 +105,14 @@ public class weatherFragmentStar extends Fragment {
                     requestWeather(mWeatherId);
                 }
             });
-
+            userButton = rootView.findViewById(R.id.userButton);
+            userButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(getActivity(),UserActivity.class);
+                    startActivity(intent);
+                }
+            });
 
             mWeatherId = getArguments().getString("weatherID");
             nowCountry =  DataSupport.where("weatherID = ?", String.valueOf(mWeatherId)).find(Country.class).get(0);
@@ -146,7 +156,6 @@ public class weatherFragmentStar extends Fragment {
     }
 
 
-
     public static void updateStar(Country country,Boolean star)
     {
         try {
@@ -171,6 +180,14 @@ public class weatherFragmentStar extends Fragment {
 
     public void requestWeather(final String weatherId) {
         String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=" + MY_KEY;
+        if (DataSupport.findAll(CheckBoxIsT.class)!=null)
+        {
+            if (DataSupport.findAll(CheckBoxIsT.class).get(0).isCheck())
+            {
+                Intent intent = new Intent(getActivity(),AutoUpdateService.class);
+               getActivity().startService(intent);
+            }
+        }
         Utils.seedMessage(weatherUrl, new Callback() {
             @Override
             public void onResponse(Call call, Response response) throws IOException {

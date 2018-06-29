@@ -13,15 +13,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 
-import com.example.sisucon.sisuconsweather.gson.Weather;
 import com.example.sisucon.sisuconsweather.weatherDB.Country;
-import com.example.sisucon.sisuconsweather.weatherDB.Province;
 import com.example.sisucon.sisuconsweather.weatherDB.StarCountry;
 
 import org.litepal.crud.DataSupport;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class MainActivity extends AppCompatActivity {
     private ViewPager viewPager;
@@ -56,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+
         viewPager = (ViewPager)findViewById(R.id.container);
         adapter = new myAdapter(getSupportFragmentManager());
         viewPager.setOffscreenPageLimit(3);
@@ -89,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+
 
     public  class myAdapter extends FragmentPagerAdapter
     {

@@ -3,12 +3,13 @@
 
     <dbname value="sisucon_weather" />
 
-    <version value="2" />
+    <version value="3" />
 
     <list>
         <mapping class="com.example.sisucon.sisuconsweather.weatherDB.Province" />
         <mapping class="com.example.sisucon.sisuconsweather.weatherDB.City" />
         <mapping class="com.example.sisucon.sisuconsweather.weatherDB.Country" />
+        <mapping class="com.example.sisucon.sisuconsweather.weatherDB.CheckBoxIsT" />
         <mapping class="com.example.sisucon.sisuconsweather.weatherDB.StarCountry" />
     </list>
 </litepal>

@@ -159,20 +159,27 @@ public class ChooseAreaFragment extends Fragment {
                 }
                 else
                 {
+                    try {
 //                        WeatherActivity activity = (WeatherActivity) getActivity();
 //                        activity.drawerLayout.closeDrawers();
 //                        activity.swipeRefresh.setRefreshing(true);
                         Country country = countyList.get(position);
 //                        activity.requestWeather(weaterCode);
-                    MainActivity activity = (MainActivity) getActivity();
-                    activity.setWeatherid(country);
+                        MainActivity activity = (MainActivity) getActivity();
+                        activity.setWeatherid(country);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
+                }
 
 
             }
         });
         queryProvinces();
     }
+
+
+
 
     /**
      * 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。
@@ -260,7 +267,7 @@ public class ChooseAreaFragment extends Fragment {
     /**
      * 根据传入的地址和类型从服务器上查询省市县数据。
      */
-    private void queryFromServer(String address, final String type) {
+    public void queryFromServer(String address, final String type) {
         showProgressDialog();
         Utils.seedMessage(address, new Callback() {
             @Override
